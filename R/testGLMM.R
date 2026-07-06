@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 testGLMM <- function(data, 
                      test_column,
                      add_formula_terms = "", 

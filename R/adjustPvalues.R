@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 adjustPvalues <- function(pvalue_df, 
                           cols, 
                           adj_mode = "append",

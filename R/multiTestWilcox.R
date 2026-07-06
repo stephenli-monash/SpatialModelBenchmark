@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 multiTestWilcox <- function(data,
                             test_columns, 
                             cols = NULL, 

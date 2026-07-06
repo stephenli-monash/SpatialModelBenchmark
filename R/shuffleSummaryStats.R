@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 shuffleSummaryStats <- function(shuffled_data, 
                                 shuffle_cols, 
                                 cols = NULL) {

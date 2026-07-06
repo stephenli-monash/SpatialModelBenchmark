@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 testClusWilcox<-function(data,
                          test_column, 
                          clus_id_col,

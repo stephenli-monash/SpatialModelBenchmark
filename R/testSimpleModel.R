@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 testSimpleModel <- function(data, 
                             test_column, 
                             cols = NULL, 

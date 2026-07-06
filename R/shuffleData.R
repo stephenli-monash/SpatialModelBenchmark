@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 shuffleData <- function(data, test_column, id_col, n, shuffle_prefix = "shuffled.") {
   
   require(tidyverse)

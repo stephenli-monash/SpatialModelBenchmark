@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 genComparisons <- function(test_column_vec) {
   # test_column_vec is a character vector containing all possible group options i.e. data$test_column
   

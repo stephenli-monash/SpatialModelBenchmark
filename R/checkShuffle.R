@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 checkShuffle <- function(shuffled_data, id_cols, shuffle_cols) {
   
   require(tidyverse)

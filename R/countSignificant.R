@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 countSignificant <- function(pvalue_df, 
                              grouping = NULL, 
                              cols = NULL,

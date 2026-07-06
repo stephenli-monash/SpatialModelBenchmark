@@ -1,3 +1,5 @@
+#' Supported families 
+#' @export
 compute_lfc <- function(data, colWilcox, colGLMM, pseudocount = 1e-6) {
 
   compute_lfc_for_suffix <- function(suffix) {

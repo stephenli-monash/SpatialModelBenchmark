@@ -1,3 +1,5 @@
+#' create html reports
+#' @export
 run_model_qc <- function(glmm_results, count_cols, output_dir = NULL, model_spec = NULL) {
 
   library(DHARMa)

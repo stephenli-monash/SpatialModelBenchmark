@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 getPvalues <- function(results_df, 
                        cols, 
                        adjust = FALSE,

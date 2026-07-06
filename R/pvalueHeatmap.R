@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 pvalueHeatmap <- function(pvalue_df, 
                           cols = NULL, 
                           group_cols = c("group1", "group2"),

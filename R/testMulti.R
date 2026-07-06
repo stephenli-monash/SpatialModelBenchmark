@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 testMulti <- function(data,
                       test_columns, 
                       test_func,

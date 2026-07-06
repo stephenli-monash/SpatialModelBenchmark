@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 testGeneric <- function(data, 
                         test_column, 
                         test_func,

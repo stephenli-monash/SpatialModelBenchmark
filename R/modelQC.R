@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 modelQC <- function(results_df, 
                     cols,
                     simoutput_df = NULL,

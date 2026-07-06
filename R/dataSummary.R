@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 dataSummary <- function(data,
                         test_column,
                         id_col,

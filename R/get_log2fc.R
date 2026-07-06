@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 ### Function to extract log2 FC from all comparisons
 
 get_log2fc <- function(data,

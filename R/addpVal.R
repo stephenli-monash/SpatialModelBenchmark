@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 addpVal<-function(data,type,false.sig,set_col="set",ind_col="ind"){
   
   # data = dt[[1]]

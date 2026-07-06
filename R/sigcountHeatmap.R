@@ -1,5 +1,5 @@
 #' @keywords internal 
-#' NULL 
+#' @export
 sigcountHeatmap <- function(sigcount_df,
                             n,
                             cols = NULL,
