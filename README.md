@@ -32,7 +32,8 @@ The package abstracts directory-level benchmarking using the core function `run_
 
 ```R
 library(SpatialModelBenchmark)
-
+setwd('/fs04/scratch2/tc48/SPIAT/SpatialModelBenchmark/')
+devtools::load_all()
 # 1. Define Model Execution Parameters
 params <- list(
   patient_col       = "SampleID",          # Patient tracking ID column
@@ -62,15 +63,6 @@ run_spatial_benchmark(
   n_shuffle   = 100
 )
 ```
-
-## Supported Model Architectures
-
-When benchmarking your data, the engine evaluates the following mathematical families:
-
-* **Poisson**: The standard counting baseline. (Assumes variance equals the mean).
-* **Negative Binomial (`nbinom1`)**: Adapts to overdispersed count data where variance scales linearly with the mean.
-* **Negative Binomial (`nbinom2`)**: Tailored for heavily clustered biological data where variance scales quadratically relative to the mean.
-* **Tweedie**: A semi-continuous compound Poisson-Gamma distribution built explicitly to manage true zero counts alongside fractional decimal densities without crashing log-link layers.
 
 ## License
 
