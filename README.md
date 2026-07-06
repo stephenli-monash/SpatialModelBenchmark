@@ -26,7 +26,7 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 remotes::install_github("stephenli-monash/SpatialModelBenchmark")
 ```
 
-## Example
+## Example on OPAL MAC data
 
 The package abstracts directory-level benchmarking using the core function `run_spatial_benchmark()`. Use this template to point the engine toward your cell-feature extraction directories:
 
