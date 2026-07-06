@@ -1,0 +1,449 @@
+---
+title: "Spatial Model Benchmark Report"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+params:
+  data: NULL
+  results: NULL
+  lfc: NULL
+  shuffle: NULL
+  glmm_models: NULL
+  glmm_results: NULL
+  count_cols: NULL      
+  dens_cols: NULL       
+  user_params: NULL
+---
+# Overview
+
+This report summarizes the spatial benchmarking analysis, including:
+
+- Statistical tests (Wilcoxon + GLMM)
+- Model diagnostics
+- Log-fold change (LFC)
+- Directional significance heatmaps
+
+# Load Libraries block
+```{r setup, message=FALSE}
+library(SpatialModelBenchmark)
+library(tidyverse)
+library(ComplexHeatmap)
+library(circlize)
+library(ggpubr)
+```
+
+# Load parameters into objects
+```{r}
+counts_and_dens <- params$data
+all_pvalues <- params$results
+lfc_res <- params$lfc
+shuffle_res <- params$shuffle
+user_params <- params$user_params
+glmm_models <- glmm_models
+glmm_results <- params$glmm_results
+```
+
+# Data Overview
+```{r}
+
+cat("Number of samples:", nrow(counts_and_dens), "\n")
+cat("Number of features:", ncol(counts_and_dens), "\n")
+
+table(counts_and_dens$Group)
+```
+
+# **6. Data Summary Heatmap**
+
+
+```{r, fig.height=10, fig.width=8}
+dataSummary(
+  data = counts_and_dens,
+  test_column = "Group",
+  id_col = "patient_id",
+  draw_heatmap = TRUE
+)
+```
+
+# **7. Statistical Results (Raw Output)**
+
+```{r}
+head(all_pvalues)
+```
+
+# **8. Adjusted P-values Setup**
+
+```{r}
+pval_df <- all_pvalues
+head(pval_df)
+```
+
+# **10. Directional Heatmap**
+
+
+```{r, fig.height=10, fig.width=10}
+# 1. Establish your color configurations
+comps_elements <- sort(unique(c(pval_df$group1, pval_df$group2)))
+shared_colors  <- setNames(
+  viridisLite::viridis(length(comps_elements), option = "D"),
+  comps_elements
+)
+
+# 2. Extract statistical model columns dynamically
+test_cols <- grep("_pval_adj$", colnames(pval_df), value = TRUE)
+model_names <- gsub("_pval_adj", "", test_cols)
+
+# 3. FIX: Clean cell_type names safely using a regex pattern
+# This clears both patterns ("_counts" and "dens") simultaneously across all rows
+pval_df <- pval_df %>%
+  mutate(cell_type = gsub("_counts$|dens$", "", cell_type))
+
+# 4. Pull LFC structures
+lfc_results <- params$lfc
+write.csv(lfc_results$wilcox$lfc_grid, 'wilcox.csv')
+
+# 5. Build an automated, model-agnostic LFC map list based on your data columns
+dynamic_lfc_list <- lapply(model_names, function(mn) {
+  if (mn == "wilcox") {
+    return(lfc_results$wilcox$lfc_grid) # Density LFC for Wilcoxon
+  } else {
+    return(lfc_results$wilcox$lfc_grid)   # that was intentional to provide LFC direction based on density
+  }
+})
+names(dynamic_lfc_list) <- model_names
+
+# 6. Execute Heatmap Engine
+pvalueHeatmap_directional(
+  pvalue_df         = pval_df,
+  lfc_list          = dynamic_lfc_list,
+  cols              = test_cols,
+  draw_heatmap      = TRUE,
+  group_cols        = c("group1", "group2"),
+  comparison_colors = shared_colors 
+)
+```
+# Log Fold Change (LFC)
+```{r}
+
+library(dplyr)
+
+# Standardize and add a tracking column to each source
+glmm_lfc <- lfc_res$glmm$lfc_grid |> 
+  dplyr::mutate(model_type = "glmm")
+
+wilcox_lfc <- lfc_res$wilcox$lfc_grid |> 
+  dplyr::mutate(model_type = "wilcox")
+
+# Combine them into a single, master data frame
+lfc_df <- dplyr::bind_rows(glmm_lfc, wilcox_lfc) |> 
+  dplyr::rename(cell_type = Cell_Type)
+
+head(lfc_df)
+
+```
+
+# **10b. Violin Plot Validation of Significant Results**
+
+```{r, fig.height=5, fig.width=10, message=FALSE}
+
+
+# --- 1. Extract significant cell types WITH comparison context ---
+sig_results <- pval_df |>
+  dplyr::filter(dplyr::if_any(
+    dplyr::all_of(test_cols),
+    ~ .x < 0.05
+  )) |>
+  dplyr::select(cell_type, group1, group2, dplyr::all_of(test_cols))
+
+sig_cell_types <- unique(sig_results$cell_type)
+
+
+# --- 2. Pivot raw data to long format for plotting ---
+plot_data_all <- counts_and_dens |>
+  tidyr::pivot_longer(
+    cols = c(
+      dplyr::all_of(params$count_cols),
+      dplyr::all_of(params$dens_cols)
+    ),
+    names_to  = "raw_col",
+    values_to = "Value"
+  ) |>
+  dplyr::mutate(
+    Measure = dplyr::case_when(
+      grepl(user_params$colGLMM,   raw_col, fixed = TRUE) ~ user_params$colGLMM,
+      grepl(user_params$colWilcox, raw_col, fixed = TRUE) ~ user_params$colWilcox,
+      TRUE ~ NA_character_
+    ),
+    cell_type = dplyr::case_when(
+      grepl(user_params$colGLMM,   raw_col, fixed = TRUE) ~
+        gsub(user_params$colGLMM,   "", raw_col, fixed = TRUE),
+      grepl(user_params$colWilcox, raw_col, fixed = TRUE) ~
+        gsub(user_params$colWilcox, "", raw_col, fixed = TRUE),
+      TRUE ~ raw_col
+    )
+  )
+  # No filter here — filtering happens per-comparison in the loop
+
+
+# --- 3. Loop over each significant comparison ---
+comparisons <- sig_results |>
+  dplyr::distinct(group1, group2)
+
+for (i in seq_len(nrow(comparisons))) {
+
+  g1 <- comparisons$group1[i]
+  g2 <- comparisons$group2[i]
+
+  cat("\n--- Plotting comparison:", as.character(g1), "vs", as.character(g2), "---\n")
+
+  sig_cts <- sig_results |>
+    dplyr::filter(group1 == g1, group2 == g2) |>
+    dplyr::pull(cell_type)
+
+  label_df <- build_labels(
+    pval_df   = pval_df,
+    lfc_df    = lfc_df, 
+    test_cols = test_cols,
+    g1        = g1,
+    g2        = g2
+  )
+
+  plot_data_comp <- plot_data_all |>
+    dplyr::filter(cell_type %in% sig_cts)
+
+   #render_violin_plot(
+   #  plot_data    = plot_data_comp,
+   #  label_df     = label_df,
+    # user_params=user_params,
+   #  measure_name = user_params$colGLMM,
+   #  title        = paste("GLMM |", g1, "vs", g2),
+    # color_map    = shared_colors
+   #)
+
+  render_violin_plot(
+    plot_data    = plot_data_comp,
+    label_df     = label_df,
+     user_params=user_params,
+    measure_name = user_params$colWilcox,
+    title        = paste("Wilcox |", g1, "vs", g2),
+    color_map    = shared_colors
+  )
+}
+
+```
+
+# 11. Model Diagnostics
+
+Avaialble as separated pdf output
+```{r, fig.height=8, fig.width=10, message=T,eval = F}  
+library(DHARMa)
+
+if (!is.null(glmm_results)) {
+
+  cat("## Model Diagnostics (DHARMa)\n\n")
+
+  count_cols <- params$count_cols
+
+  # Get all unique group comparisons from pval_df
+  comparisons <- pval_df |>
+    dplyr::distinct(group1, group2)
+
+  for (i in seq_len(nrow(comparisons))) {
+
+    g1 <- comparisons$group1[i]
+    g2 <- comparisons$group2[i]
+
+    cat("\n\n## Comparison:", as.character(g1), "vs", as.character(g2), "\n\n")
+
+    # Subset glmm_results to this comparison if it's keyed by comparison
+    # Adjust the key format below to match however glmm_results is named
+
+   for (j in 1:length(glmm_results)){
+  model_df <- glmm_results[[j]]
+
+    simoutput_df <- model_df |>
+      dplyr::mutate(
+        across(
+          all_of(count_cols),
+          ~ purrr::map(.x, \(model) simulateResiduals(model))
+        )
+      )
+    simoutput_df
+    modelQC(
+      model_df,
+      count_cols,
+      simoutput_df = simoutput_df,
+      QQplots      = TRUE,
+      AIC_BIC      = TRUE
+    )
+   }
+  
+  }
+
+} else {
+
+  cat("No GLMM models available — skipping QC.\n")
+
+}
+
+```
+
+# **12. Shuffle Analysis Summary**
+
+```{r, fig.height=10, fig.width=10, eval = T, message=FALSE}
+if (!is.null(shuffle_res)) {
+
+  # ----------------------------
+  # Extract shuffled data
+  # ----------------------------
+  shuffled_df  <- shuffle_res$shuffled_df
+  shuffle_names <- shuffle_res$shuffle_names
+
+  count_cols <- params$count_cols
+  dens_cols  <- params$dens_cols
+
+  cell_type <- gsub(
+    user_params$colWilcox,
+    "",
+    colnames(counts_and_dens)[grepl(user_params$colWilcox, colnames(counts_and_dens))]
+  )
+
+  # ----------------------------
+  # Check shuffle quality
+  # ----------------------------
+  expected_cols <- c(
+    paste0(cell_type, user_params$colGLMM),
+    paste0(cell_type, user_params$colWilcox)
+  )
+
+  valid_cols <- intersect(expected_cols, colnames(shuffled_df))
+
+  missing_cols <- setdiff(expected_cols, valid_cols)
+  if (length(missing_cols) > 0) {
+    message("Removed missing columns: ", paste(missing_cols, collapse = ", "))
+  }
+
+  shuffleSummaryStats(shuffled_df, shuffle_names, valid_cols)[1:5, 1:5]
+
+  p <- checkShuffle(shuffled_df, c("Sample_id", "Group"), shuffle_names)
+  print(p)
+
+
+  # ==========================================================
+  # 1. Wilcoxon tests
+  # ==========================================================
+  res_list <- list()
+  for (shuffle_col in shuffle_names) {
+    res_list[[shuffle_col]] <- testWilcox(
+      shuffled_df,
+      shuffle_col,
+      paste0(cell_type, user_params$colWilcox),
+      show_test_details = FALSE
+    )
+  }
+
+  wilcox_res_shuffle <- res_list |>
+    tibble::enframe(name = "columnID") |>
+    tidyr::unnest(cols = c(value)) |>
+    dplyr::rename_with(~ gsub(user_params$colWilcox, "", .x))
+
+
+  # ==========================================================
+  # 2. DYNAMIC GLMM tests (Model Agnostic Loop)
+  # ==========================================================
+  # This loops over whatever is inside glmm_models dynamically
+  glmm_shuffle_results <- lapply(seq_along(glmm_models), function(m_idx) {
+    
+    current_model <- glmm_models[[m_idx]]
+    model_res_list <- list()
+    
+    for (shuffle_col in shuffle_names) {
+      model_res_list[[shuffle_col]] <- testGLMM(
+        shuffled_df,
+        shuffle_col,
+        add_formula_terms = current_model$formula,
+        cols              = count_cols,
+        family            = eval(parse(text = current_model$family)),
+        show_test_details = FALSE
+      )
+    }
+    
+    # Process, unnest, and harmonize column headers immediately
+    model_res_list |>
+      tibble::enframe(name = "columnID") |>
+      tidyr::unnest(cols = c(value)) |>
+      dplyr::rename_with(~ gsub(user_params$colGLMM, "", .x))
+  })
+  
+  # Assign a predictable list name string based on the model's family name
+  model_names_clean <- sapply(glmm_models, function(m) m$family)
+  names(glmm_shuffle_results) <- model_names_clean
+
+
+  # ==========================================================
+  # 3. Combine all p-values dynamically
+  # ==========================================================
+  # Combine Wilcoxon with our dynamically populated list of GLMM outputs
+  master_p_list <- c(list(wilcox = wilcox_res_shuffle), glmm_shuffle_results)
+  
+  all_pvalues <- tibble::enframe(master_p_list) |>
+    tidyr::unnest(cols = c(value)) |>
+    getPvalues(cols = cell_type) |>
+    tidyr::pivot_wider(
+      names_from  = name,
+      values_from = dplyr::all_of(cell_type)
+    )
+
+
+  # ==========================================================
+  # 4. Count significant values
+  # ==========================================================
+  sigcounts <- countSignificant(
+    all_pvalues,
+    grouping      = c("group1", "group2"),
+    sig_id_format = "string"
+  )
+
+# ==========================================================
+  # 5. Reshape for heatmap dynamically
+  # ==========================================================
+  df_long <- sigcounts %>%
+    dplyr::select(group1, group2, dplyr::ends_with(".sig_counts")) %>%
+    tidyr::pivot_longer(
+      cols          = dplyr::ends_with(".sig_counts"),
+      names_to      = c("cell_type", ".value"),
+      names_pattern = "^(.*)_(.*)\\.sig_counts$"
+    ) %>%
+    dplyr::relocate(cell_type, group1, group2) %>%
+    dplyr::filter(!is.na(cell_type))
+
+  # Identify what models exist as columns in df_long (excluding metadata cols)
+  model_cols <- setdiff(colnames(df_long), c("cell_type", "group1", "group2"))
+
+
+  # ==========================================================
+  # 6. Final heatmap (With Explicit Column Routing)
+  # ==========================================================
+  sigcountHeatmap(
+    sigcount_df     = tibble::as_tibble(df_long),
+    n               = length(shuffle_names),
+    cols            = model_cols, # FIX: Forces the function to read these columns directly
+    row_name_col    = "cell_type",
+    column_title    = "Random shuffle\nunadjusted p-values",
+    column_title_gp = grid::gpar(fontsize = 16, fontface = "bold"),
+    draw_heatmap    = TRUE,
+    show_row_names  = TRUE
+  )
+} else {
+  cat("No shuffle results available.\n")
+}
+```
+# Session info
+```{r}
+
+sessionInfo()
+
+```
+
+---

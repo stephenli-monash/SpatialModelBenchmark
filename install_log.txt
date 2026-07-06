@@ -1,0 +1,169 @@
+ install.packages(c(  "devtools", "usethis", "roxygen2",  "tidyverse", "glmmTMB", "DHARMa", "ComplexHeatmap", "circlize", "yaml", "argparse"))
+
+      library(usethis) 
+    
+usethis::use_directory("inst")
+  use_roxygen_md() 
+ use_testthat() 
+ use_vignette("workflow") 
+
+
+ml R pandoc
+R
+
+
+#===================================================
+#==============cell count OPAL===================
+#===================================================
+
+setwd('/fs04/scratch2/tc48/SPIAT/SpatialModelBenchmark/')
+devtools::load_all()
+
+params <- list(
+  patient_col = "SampleID",
+  test_column = "TissueRegion",
+
+  Total_ROI_Area = "Area.mm2",
+  Total_Cell_Number = "Total_Cell_Number",
+
+  FOV_col = "FOV_ID",
+
+  colWilcox = "dens",
+  colGLMM = "_counts",
+
+  GLMM_formula = "+ (1|patient_id) + offset(log(Area.mm2))"
+)
+
+glmm_models <- list(
+   nbinom1 = list(
+    family = "nbinom1",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+  nbinom2 = list(
+    family = "nbinom2",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+  poisson = list(
+    family = "poisson",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+ tweedie = list(
+    family = "tweedie", 
+    link = "log",
+    formula = params$GLMM_formula
+  )
+)
+
+run_spatial_benchmark(
+  data_dir = "/fs04/scratch2/tc48/SPIAT/OPAL_MAC/extracted_features/",
+  output_dir = "/fs04/scratch2/tc48/SPIAT/OPAL_MAC/html/",
+  params = params,
+  glmm_models = glmm_models,
+   n_shuffle=100
+)
+ 
+#===================================================
+#==============cell count TNBC===================
+#===================================================
+
+setwd('/fs04/scratch2/tc48/SPIAT/SpatialModelBenchmark/')
+devtools::load_all()
+
+params <- list(
+  patient_col = "patientid",
+  test_column = "Tumourtype",
+
+  Total_ROI_Area = "Total_ROI_Area",
+  Total_Cell_Number = "Total_Cell_Number",
+
+  FOV_col = "patientid",
+
+  colWilcox = ".dens",
+  colGLMM = "_counts",
+
+  GLMM_formula = "+ (1|patient_id)"
+)
+
+glmm_models <- list(
+   nbinom1 = list(
+    family = "nbinom1",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+  nbinom2 = list(
+    family = "nbinom2",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+  poisson = list(
+    family = "poisson",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+ tweedie = list(
+    family = "tweedie", 
+    link = "log",
+    formula = params$GLMM_formula
+  )
+)
+
+run_spatial_benchmark(
+  data_dir = "/fs04/scratch2/tc48/SPIAT/MIBI_TNBC/extracted_features/",
+  output_dir = "/fs04/scratch2/tc48/SPIAT/MIBI_TNBC/html/counts/",
+  params = params,
+  glmm_models = glmm_models,
+   n_shuffle=100
+)
+
+#===================================================
+#==============min dis GBM===================
+#===================================================
+
+setwd('/fs04/scratch2/tc48/SPIAT/SpatialModelBenchmark/')
+devtools::load_all()
+
+params <- list(
+  patient_col = "px_id",
+  test_column = "timepoint",
+
+  Total_ROI_Area = "Total_ROI_Area",
+  Total_Cell_Number = "Total_Cell_Count",
+
+  FOV_col = "patient_ROI",
+
+  colWilcox = "_Median_MinDist_to_Tumor",
+  colGLMM = "_Median_MinDist_to_Tumor",
+
+  GLMM_formula = "+ (1|patient_id)"
+)
+
+glmm_models <- list(
+   gaussian = list(
+    family = "gaussian",
+    link = "identity",
+    formula = params$GLMM_formula
+  ),
+  lognormal = list(
+    family = "lognormal",
+    link = "log",
+    formula = params$GLMM_formula
+  ),
+ tweedie = list(
+    family = "tweedie", 
+    link = "log",
+    formula = params$GLMM_formula
+  )
+)
+
+run_spatial_benchmark(
+  data_dir = "/fs04/scratch2/tc48/SPIAT/GBM_IMC_2025/extracted_features/",
+  output_dir = "/fs04/scratch2/tc48/SPIAT/GBM_IMC_2025/html/Median_MinDist_to_Tumor/",
+  params = params,
+  glmm_models = glmm_models,
+   n_shuffle=100
+)
+
+
