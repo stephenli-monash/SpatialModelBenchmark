@@ -1,4 +1,16 @@
-#' @keywords internal 
+#' Check Data Shuffle Distribution
+#'
+#' Visualises how data fields are distributed across shuffle groups 
+#' by generating a breakdown bar chart and frequency histograms.
+#'
+#' @param shuffled_data A data frame or tibble containing the shuffled data.
+#' @param id_cols A character vector of column names used to uniquely identify rows.
+#' @param shuffle_cols A character vector of column names representing the shuffle groups.
+#'
+#' @return A ggplot object combining a stacked bar chart and faceted histograms.
+#' @import tidyverse
+#' @importFrom ggpubr ggarrange
+#' @importFrom circlize colorRamp2
 #' @export
 checkShuffle <- function(shuffled_data, id_cols, shuffle_cols) {
   
