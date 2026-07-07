@@ -11,7 +11,6 @@
 #' @import tidyverse
 #' @importFrom ggpubr ggarrange
 #' @importFrom circlize colorRamp2
-#' @export
 checkShuffle <- function(shuffled_data, id_cols, shuffle_cols) {
   
   require(tidyverse)
